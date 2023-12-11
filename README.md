@@ -1,4 +1,7 @@
-# Data-Science-with-Numpy🎈
+<p align="center">
+  <h1>Data-Science-with-Numpy🎈</h1>
+</p>
+
 
 
 [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)

@@ -1,6 +1,4 @@
-<p align="center">
-  <h1>Data-Science-with-Numpy🎈</h1>
-</p>
+#                                    Data-Science-with-Numpy🎈
 
 
 

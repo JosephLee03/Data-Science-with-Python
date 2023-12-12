@@ -54,7 +54,6 @@ class myANNClassifier:
             output: 输出数据，shape = (n, layers[-1])。
         """
 
-       
         x_c = x.copy().flatten()
 
         # 第一层初始化
@@ -94,8 +93,8 @@ class myANNClassifier:
 
         y_c = y.copy()
 
-        # 初始化误差，全部为0。输入层没有err，但是为了方便计算，也初始化为0
-        err = [np.array([0] *i) for i in self.layers]
+        # 初始化误差，全部为0.0。输入层没有err，但是为了方便计算，也初始化为0
+        err = [np.array([0.0] *i) for i in self.layers]
         # print(err)
 
         for layer in range(self.num_layers-1, 0, -1):
@@ -104,11 +103,17 @@ class myANNClassifier:
                
                # 输出层
                 if layer == self.num_layers-1:
+                    
                     err[layer][i] = (y_c[0][i] - O_j[layer][i]) * O_j[layer][i] * (1 - O_j[layer][i])
+                    # print(y_c[0][i] - O_j[layer][i])
+                    # print(O_j[layer][i])
+                    # print(1 - O_j[layer][i])
+                    # time.sleep(1)
 
                 # 隐藏层
                 else:
                     err[layer][i] = np.dot(err[layer+1], self.weights[layer][i]) * O_j[layer][i] * (1 - O_j[layer][i])
+                    
                 
         return err
 
@@ -122,16 +127,25 @@ class myANNClassifier:
         
         I_j, O_j = self.forward(x)
         err = self.cal_err(y, O_j)
-
+        # print(err)
+        # time.sleep(5)
         for layer in range(0, self.num_layers-1):
             for i in range(0, self.layers[layer+1]):
                 # 更新偏置
                 self.bias[layer][i] += self.lr * err[layer+1][i]
 
+                # print(self.bias)
+
                 # 更新权重
                 for j in range(0, self.layers[layer]):
                     self.weights[layer][j][i] += self.lr * err[layer+1][i] * O_j[layer][j]
+
+                # print(self.weights)
+                
+                # time.sleep(5)
                     
+        
+        return I_j, O_j
         # print("更新后的权重：", self.weights)
 
                     
@@ -155,17 +169,16 @@ class myANNClassifier:
             epoch_loss = 0.0  # 每个epoch损失值
             for i in range(data_size):
 
-                self.backward(x_c[i:i+1], y_c[i:i+1])
-
-                _, outputs = self.forward(x_c[i:i+1])
+                _, outputs = self.backward(x_c[i:i+1], y_c[i:i+1])
 
                 # 计算交叉熵损失
-                epoch_loss += np.sum((outputs[-1] - y_c[i:i+1]) ** 2) / 2
+                epoch_loss += np.sum((outputs[-1] - y_c[i:i+1][0]) ** 2) / 2
     
             epoch_loss /= data_size
             losses.append(epoch_loss)
-            if epoch % 5 == 0:
-                print("-----Epoch: {} Loss-----: {}".format(epoch, epoch_loss))
+
+            # if epoch % 5 == 0:
+            #     print("-----Epoch: {} Loss-----: {}".format(epoch, epoch_loss))
 
         # plt.plot(losses)
         # plt.show()
@@ -186,6 +199,10 @@ class myANNClassifier:
         for i in range(data_size):
             print("predicting..., sample: {}".format(i+1), end="\r")
             _, output = self.forward(x_c[i:i+1])
+
+            
+
+
             outputs.append(output[-1].item())
 
         return outputs
@@ -193,13 +210,13 @@ class myANNClassifier:
 
 if __name__ == "__main__":
     print("====== myANNClassifier.py Test ======")
-    x = np.random.randn(70, 10)
+    x = np.random.randn(70, 3)
     y = np.square(np.mean(x, axis=1)).reshape(-1, 1)
 
-    ann = myANNClassifier(layers = [x.shape[1], 4, 8, 1], lr=0.05, activation="sigmoid")
-    ann.train(x, y, epochs=100)
+    ann = myANNClassifier(layers = [x.shape[1], 2, 4, 1], lr=0.01, activation="sigmoid")
+    ann.train(x, y, epochs=20)
 
-    z = np.random.randn(30, 10)
+    z = np.random.randn(30, 3)
     label = np.square(np.mean(z, axis=1)).reshape(-1, 1)
     labels = list(label.reshape(1,-1).flatten())
     outputs = ann.predict(z)

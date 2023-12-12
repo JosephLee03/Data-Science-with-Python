@@ -20,10 +20,7 @@ class myANNClassifier:
         self.lr = lr
         self.activation = activation
 
-        # 每个单元的输入，初始先全未0
-        self.I_j = [np.array([0.0] *i) for i in self.layers]
-        # 每个单元的输出，初始先全未0
-        self.O_j = [np.array([0.0] *i) for i in self.layers]  
+         
 
     def __activation_func(self, x):
         """
@@ -60,26 +57,28 @@ class myANNClassifier:
        
         x_c = x.copy().flatten()
 
-        # 第一层初始化 
-        self.I_j[0] = x_c       
-        self.O_j[0] = x_c
-            
+        # 第一层初始化
+        # 每个单元的输入，初始先全未0
+        I_j = [np.array([0.0] *i) for i in self.layers]
+        # 每个单元的输出，初始先全未0
+        O_j = [np.array([0.0] *i) for i in self.layers]
+
+        I_j[0] = x_c
+        O_j[0] = x_c
+       
+
         # 隐藏层+输出层的输入
         for j in range(1, self.num_layers):
 
             for i in range(0, self.layers[j]):
-                
-                print(self.weights[j-1][:, i].shape)
-                print(self.O_j[j-1].shape)
-                time
-                self.I_j[j][i] = (np.dot(self.weights[j-1][:, i], self.O_j[j-1]) + self.bias[j-1][i])[0]
+                I_j[j][i] = (np.dot(self.weights[j-1][:, i], O_j[j-1]) + self.bias[j-1][i])[0]
 
         # 隐藏层+输出层的输出
         for j in range(1, self.num_layers):
             for i in range(0, self.layers[j]):
-                self.O_j[j][i] = float(self.__activation_func(self.I_j[j][i]))
+                O_j[j][i] = float(self.__activation_func(I_j[j][i]))
 
-        return self.I_j, self.O_j
+        return I_j, O_j
 
 
 
@@ -111,8 +110,6 @@ class myANNClassifier:
                 else:
                     err[layer][i] = np.dot(err[layer+1], self.weights[layer][i]) * O_j[layer][i] * (1 - O_j[layer][i])
                 
-
-
         return err
 
     def backward(self, x, y):
@@ -182,8 +179,16 @@ class myANNClassifier:
         return:
             outputs: 预测值，shape = (n, layers[-1])。
         """
-        _, outputs = self.forward(x)
-        return outputs[-1]
+
+        x_c = x.copy()
+        data_size = x_c.shape[0]
+        outputs = []
+        for i in range(data_size):
+            print("predicting..., sample: {}".format(i+1), end="\r")
+            _, output = self.forward(x_c[i:i+1])
+            outputs.append(output[-1].item())
+
+        return outputs
 
 
 if __name__ == "__main__":
@@ -191,16 +196,21 @@ if __name__ == "__main__":
     x = np.random.randn(70, 10)
     y = np.square(np.mean(x, axis=1)).reshape(-1, 1)
 
-    ann = myANNClassifier(layers = [x.shape[1], 2, 3, 1], lr=0.05, activation="sigmoid")
-    ann.train(x, y, epochs=200)
+    ann = myANNClassifier(layers = [x.shape[1], 4, 8, 1], lr=0.05, activation="sigmoid")
+    ann.train(x, y, epochs=100)
 
     z = np.random.randn(30, 10)
     label = np.square(np.mean(z, axis=1)).reshape(-1, 1)
+    labels = list(label.reshape(1,-1).flatten())
+    outputs = ann.predict(z)
 
-    plt.plot(ann.predict(z), label="predict")
-    plt.plot(label, label="label")
+    plt.figure(figsize=(10, 7))
+    plt.plot(outputs, label="predict")
+    plt.plot(labels, label="label")
     plt.legend()
     plt.show()
+
+
 
 
     

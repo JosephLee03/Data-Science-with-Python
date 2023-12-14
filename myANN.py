@@ -11,16 +11,15 @@ class myANNClassifier:
             lr: 学习率。
             activation: 激活函数。
         """
+
         self.layers = layers
         self.num_layers = len(layers)
         self.weight_num = sum(map(lambda x, y: x * y, layers, layers[1:]))
         self.weights = [np.random.randn(x, y) * 0.5 for x, y in zip(layers[:-1], layers[1:])]   # list: weights[0]是第一层到第二层的权重, 以此类推
         self.bias = [np.random.randn(y, 1) * 0.5 for y in layers[1:]]  # list: bias[0]是第二层的偏置, 以此类推
-        
         self.lr = lr
         self.activation = activation
 
-         
 
     def __activation_func(self, x):
         """
@@ -30,6 +29,7 @@ class myANNClassifier:
         return:
             o: 输出数据，shape = (n, layers[-1])。
         """
+
         try:
             if self.activation == "sigmoid":
                 return 1 / (1 + np.exp(-x))
@@ -55,37 +55,29 @@ class myANNClassifier:
         """
 
         x_c = x.copy().flatten()
-
         # 第一层初始化
         # 每个单元的输入，初始先全未0
-        I_j = [np.zeros(i) for i in self.layers]
+        I = [np.zeros(i) for i in self.layers]
         # 每个单元的输出，初始先全未0
-        O_j = [np.zeros(i) for i in self.layers]
+        O = [np.zeros(i) for i in self.layers]
 
-        I_j[0] = x_c
-        O_j[0] = x_c
+        I[0] = x_c.reshape(-1,1)
+        O[0] = x_c.reshape(-1,1)
        
-        # 隐藏层+输出层的输入
+        # 隐藏层+输出层的输入+矩阵乘法优化
         for j in range(1, self.num_layers):
-            for i in range(0, self.layers[j]):
-                I_j[j][i] = (np.dot(self.weights[j-1][:, i], O_j[j-1]) + self.bias[j-1][i])[0]
-                O_j[j][i] = float(self.__activation_func(I_j[j][i]))
-        
-        # 矩阵乘法优化
-        # for j in range(1, self.num_layers):
-        #     I_j[j] = np.dot(self.weights[j - 1].T, O_j[j - 1]) + self.bias[j - 1]
-        #     O_j[j] = self.__activation_func(I_j[j])
+            I[j] = np.dot(self.weights[j - 1].T, O[j - 1]).reshape(-1,1) + self.bias[j - 1]
+            O[j] = self.__activation_func(I[j])
 
-        return I_j, O_j
+        return I, O
 
 
-
-    def cal_err(self, y, O_j):
+    def cal_err(self, y, O):
         """
         计算隐藏层和输出层每个神经元的误差
         params:
             y: 输出数据，shape = (1, layers[-1])。
-            O_j: 样本输入后网络后，每个单元的输出。
+            O: 样本输入后网络后，每个单元的输出。
         return:
             err: 隐藏层和输出层每个神经元的误差。
         """
@@ -94,22 +86,17 @@ class myANNClassifier:
 
         # 初始化误差，全部为0.0。输入层没有err，但是为了方便计算，也初始化为0
         err = [np.zeros(i) for i in self.layers]
-        # print(err)
+        err[0] = err[0].reshape(1, -1)
+        
+        for layer in range(self.num_layers - 1, 0, -1):
+            if layer == self.num_layers - 1:
+                # 输出层的误差
+                err[layer] = (y_c - O[layer]) * O[layer] * (1 - O[layer])
 
-        for layer in range(self.num_layers-1, 0, -1):
+            else:
+                # 隐藏层的误差
+                err[layer] = np.dot(err[layer + 1], self.weights[layer].T) * O[layer].T * (1 - O[layer].T)
 
-            for i in range(0, self.layers[layer]):
-               
-               # 输出层
-                if layer == self.num_layers-1:
-                    
-                    err[layer][i] = (y_c[0][i] - O_j[layer][i]) * O_j[layer][i] * (1 - O_j[layer][i])
-
-                # 隐藏层
-                else:
-                    err[layer][i] = np.dot(err[layer+1], self.weights[layer][i]) * O_j[layer][i] * (1 - O_j[layer][i])
-                    
-                
         return err
 
     def backward(self, x, y):
@@ -120,23 +107,15 @@ class myANNClassifier:
             y: 输出数据，shape = (1, layers[-1])。"""
         
         
-        I_j, O_j = self.forward(x)
-        err = self.cal_err(y, O_j)
-        # print(err)
-        # time.sleep(5)
-        for layer in range(0, self.num_layers-1):
-            for i in range(0, self.layers[layer+1]):
-                # 更新偏置
-                self.bias[layer][i] += self.lr * err[layer+1][i]
-
-                # print(self.bias)
-
-                # 更新权重
-                for j in range(0, self.layers[layer]):
-                    self.weights[layer][j][i] += self.lr * err[layer+1][i] * O_j[layer][j]
-                    
+        I, O = self.forward(x)
+        err = self.cal_err(y, O)
+        for layer in range(self.num_layers-1):
+            # 更新偏置
+            self.bias[layer] += self.lr * err[layer+1].T    # 注意这里err[layer+1]只是因为bias初始化的时候没有考虑输入层
+            # 更新权重
+            self.weights[layer] += self.lr * np.dot(O[layer], err[layer+1])
         
-        return I_j, O_j
+        return I, O
            
 
     def train(self, x, y, epochs=10):
@@ -151,18 +130,16 @@ class myANNClassifier:
         x_c = x.copy()
         y_c = y.copy()
         data_size = x_c.shape[0]
-        losses = []  # 用于存储每次迭代的损失值
+        losses = []  # 存储每次迭代的损失值
 
         for epoch in range(epochs):
-            
+        
             epoch_loss = 0.0  # 每个epoch损失值
+
             for i in range(data_size):
-
                 _, outputs = self.backward(x_c[i:i+1], y_c[i:i+1])
-
-                # 计算交叉熵损失
                 epoch_loss += np.sum((outputs[-1] - y_c[i:i+1][0]) ** 2) / 2
-    
+
             epoch_loss /= data_size
             losses.append(epoch_loss)
 
@@ -185,8 +162,6 @@ class myANNClassifier:
         for i in range(data_size):
             print("predicting..., sample: {}".format(i+1), end="\r")
             _, output = self.forward(x_c[i:i+1])
-
-
             outputs.append(output[-1].item())
 
         return outputs
@@ -194,13 +169,15 @@ class myANNClassifier:
 
 if __name__ == "__main__":
     print("====== myANNClassifier.py Test ======")
-    x = np.random.randn(70, 3)
+    x = np.random.randn(70, 5)
     y = np.square(np.mean(x, axis=1)).reshape(-1, 1)
 
-    ann = myANNClassifier(layers = [x.shape[1], 2, 4, 1], lr = 0.1, activation="sigmoid")
-    ann.train(x, y, epochs=200)
 
-    z = np.random.randn(30, 3)
+    ann = myANNClassifier(layers = [x.shape[1], 3, 1], lr = 0.1, activation="sigmoid")
+    ann.train(x, y, epochs=1000)
+
+    z = np.random.randn(30, 5)
+
     label = np.square(np.mean(z, axis=1)).reshape(-1, 1)
     labels = list(label.reshape(1,-1).flatten())
     outputs = ann.predict(z)

@@ -58,24 +58,23 @@ class myANNClassifier:
 
         # 第一层初始化
         # 每个单元的输入，初始先全未0
-        I_j = [np.array([0.0] *i) for i in self.layers]
+        I_j = [np.zeros(i) for i in self.layers]
         # 每个单元的输出，初始先全未0
-        O_j = [np.array([0.0] *i) for i in self.layers]
+        O_j = [np.zeros(i) for i in self.layers]
 
         I_j[0] = x_c
         O_j[0] = x_c
        
-
         # 隐藏层+输出层的输入
         for j in range(1, self.num_layers):
-
             for i in range(0, self.layers[j]):
                 I_j[j][i] = (np.dot(self.weights[j-1][:, i], O_j[j-1]) + self.bias[j-1][i])[0]
-
-        # 隐藏层+输出层的输出
-        for j in range(1, self.num_layers):
-            for i in range(0, self.layers[j]):
                 O_j[j][i] = float(self.__activation_func(I_j[j][i]))
+        
+        # 矩阵乘法优化
+        # for j in range(1, self.num_layers):
+        #     I_j[j] = np.dot(self.weights[j - 1].T, O_j[j - 1]) + self.bias[j - 1]
+        #     O_j[j] = self.__activation_func(I_j[j])
 
         return I_j, O_j
 
@@ -94,7 +93,7 @@ class myANNClassifier:
         y_c = y.copy()
 
         # 初始化误差，全部为0.0。输入层没有err，但是为了方便计算，也初始化为0
-        err = [np.array([0.0] *i) for i in self.layers]
+        err = [np.zeros(i) for i in self.layers]
         # print(err)
 
         for layer in range(self.num_layers-1, 0, -1):
@@ -105,10 +104,6 @@ class myANNClassifier:
                 if layer == self.num_layers-1:
                     
                     err[layer][i] = (y_c[0][i] - O_j[layer][i]) * O_j[layer][i] * (1 - O_j[layer][i])
-                    # print(y_c[0][i] - O_j[layer][i])
-                    # print(O_j[layer][i])
-                    # print(1 - O_j[layer][i])
-                    # time.sleep(1)
 
                 # 隐藏层
                 else:
@@ -139,16 +134,10 @@ class myANNClassifier:
                 # 更新权重
                 for j in range(0, self.layers[layer]):
                     self.weights[layer][j][i] += self.lr * err[layer+1][i] * O_j[layer][j]
-
-                # print(self.weights)
-                
-                # time.sleep(5)
                     
         
         return I_j, O_j
-        # print("更新后的权重：", self.weights)
-
-                    
+           
 
     def train(self, x, y, epochs=10):
         """
@@ -177,13 +166,10 @@ class myANNClassifier:
             epoch_loss /= data_size
             losses.append(epoch_loss)
 
-            # if epoch % 5 == 0:
-            #     print("-----Epoch: {} Loss-----: {}".format(epoch, epoch_loss))
+            if epoch % 5 == 0:
+                print("-----Epoch: {} Loss-----: {}".format(epoch, epoch_loss))
 
-        # plt.plot(losses)
-        # plt.show()
-        
-    
+
     def predict(self, x):
         """
         预测
@@ -200,8 +186,6 @@ class myANNClassifier:
             print("predicting..., sample: {}".format(i+1), end="\r")
             _, output = self.forward(x_c[i:i+1])
 
-            
-
 
             outputs.append(output[-1].item())
 
@@ -213,8 +197,8 @@ if __name__ == "__main__":
     x = np.random.randn(70, 3)
     y = np.square(np.mean(x, axis=1)).reshape(-1, 1)
 
-    ann = myANNClassifier(layers = [x.shape[1], 2, 4, 1], lr=0.01, activation="sigmoid")
-    ann.train(x, y, epochs=20)
+    ann = myANNClassifier(layers = [x.shape[1], 2, 4, 1], lr = 0.1, activation="sigmoid")
+    ann.train(x, y, epochs=200)
 
     z = np.random.randn(30, 3)
     label = np.square(np.mean(z, axis=1)).reshape(-1, 1)
@@ -226,8 +210,3 @@ if __name__ == "__main__":
     plt.plot(labels, label="label")
     plt.legend()
     plt.show()
-
-
-
-
-    

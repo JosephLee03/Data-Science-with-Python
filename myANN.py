@@ -1,9 +1,8 @@
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-import time
+from tqdm import tqdm
 
-class myANNClassifier:
+class myANN:
     def __init__(self, layers = [3, 4, 2], lr = 0.01, activation = "sigmoid"):
         """
         params:
@@ -19,6 +18,7 @@ class myANNClassifier:
         self.bias = [np.random.randn(y, 1) * 0.5 for y in layers[1:]]  # list: bias[0]是第二层的偏置, 以此类推
         self.lr = lr
         self.activation = activation
+        self.train_loss = []
 
 
     def __activation_func(self, x):
@@ -139,12 +139,17 @@ class myANNClassifier:
             for i in range(data_size):
                 _, outputs = self.backward(x_c[i:i+1], y_c[i:i+1])
                 epoch_loss += np.sum((outputs[-1] - y_c[i:i+1][0]) ** 2) / 2
+                
 
             epoch_loss /= data_size
             losses.append(epoch_loss)
 
             if epoch % 5 == 0:
                 print("-----Epoch: {} Loss-----: {}".format(epoch, epoch_loss))
+        
+        self.train_loss = losses
+        
+        
 
 
     def predict(self, x):
@@ -168,22 +173,27 @@ class myANNClassifier:
 
 
 if __name__ == "__main__":
-    print("====== myANNClassifier.py Test ======")
+    print("====== myANN.py Test ======")
     x = np.random.randn(70, 5)
     y = np.square(np.mean(x, axis=1)).reshape(-1, 1)
 
 
-    ann = myANNClassifier(layers = [x.shape[1], 3, 1], lr = 0.1, activation="sigmoid")
+    ann = myANN(layers = [x.shape[1],3, 1], lr = 0.1, activation="sigmoid")
     ann.train(x, y, epochs=1000)
+    train_loss = ann.train_loss
 
     z = np.random.randn(30, 5)
-
     label = np.square(np.mean(z, axis=1)).reshape(-1, 1)
     labels = list(label.reshape(1,-1).flatten())
     outputs = ann.predict(z)
 
-    plt.figure(figsize=(10, 7))
-    plt.plot(outputs, label="predict")
-    plt.plot(labels, label="label")
-    plt.legend()
+    plt.figure(figsize=(10, 14), dpi=80)
+    plt.subplot(2, 1, 1)
+    plt.plot(train_loss, linewidth = 2.5, color = '#00589c')
+    plt.title("Train: Loss Curve", fontsize=14, fontweight='bold')
+    plt.subplot(2, 1, 2)
+    plt.plot(outputs, label="predict", color="red", marker="o")
+    plt.plot(labels, label="label", color="blue", marker="*")
+    plt.legend(fontsize=12)
+    plt.title("Forecasting result", fontsize=14, fontweight='bold')
     plt.show()
